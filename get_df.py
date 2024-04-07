@@ -21,5 +21,5 @@ def get_dataframe():
     subsampled_sid = speaker_counts[speaker_counts > 15].index.tolist()
     # Filter DataFrame to keep only rows with matching speaker IDs
     sub_df = audio_csv[audio_csv['speaker_id'].isin(subsampled_sid)]
-
-    return sub_df
+   
+    return sub_df, subsampled_sid

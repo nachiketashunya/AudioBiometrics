@@ -1,5 +1,4 @@
 import numpy as np
-from scipy import signal
 import librosa
 
 class AudioPreprocessor:
@@ -11,41 +10,37 @@ class AudioPreprocessor:
         self.sample_rate = sample_rate
         self.b = [1, -mu]
         self.a = 1
-        self.window = signal.get_window(window_type, N)
-
-    def mel_filterbank(self, num_filters):
-        mel_filters = librosa.filters.mel(sr=self.sample_rate, n_fft=self.N, n_mels=num_filters)
-        return mel_filters.T  # Transpose to match the shape used in the previous code snippet
-
-    def preprocess_audio(self, wav):
-        # Apply pre-emphasis filter
-        wav = signal.lfilter(self.b, self.a, wav)
+        self.window = librosa.filters.get_window(window_type, N)
+        
+    def preprocess_audio(self, wav_file, sr=16000, n_fft=48, hop_length=256, n_mels=12):
+        # Load audio using librosa (assumes WAV format)
+        wav, _ = librosa.load(wav_file, sr=sr)
 
         # Frame division with overlap
-        frames = []
-        start = 0
-        while start + self.N < len(wav[0]):
-            frames.append(wav[0][start:start+self.N])
-            start += self.N - self.M
+        frames = librosa.util.frame(wav, frame_length=n_fft, hop_length=hop_length)
 
-        # Apply window function
-        windowed_frames = [frame * self.window for frame in frames]
+        # Apply window function (Hamming window by default)
+        window = librosa.filters.get_window('hann', n_fft)
+        windowed_frames = frames * window[:, np.newaxis]  # Reshape to have one column
 
         # FFT transformation
-        fft_frames = [np.fft.fft(frame) for frame in windowed_frames]
+        fft_frames = np.fft.fft(windowed_frames, axis=1)
+        
+        # Compute MFCC features (using log-magnitude spectrum for stability)
+        mfcc_features = librosa.feature.mfcc(y=np.abs(fft_frames), sr=sr, n_mels=n_mels, n_fft=n_fft)
+        mfcc_features = np.mean(mfcc_features, axis=1)
 
-        # Triangle filterbank
-        num_filters = 24
-        mel_filters = self.mel_filterbank(num_filters)
+        # Chroma_stft mean and variance
+        chroma = librosa.feature.chroma_stft(y=wav, sr=sr)
+        chroma_mean = np.mean(chroma, axis=1)
+        chroma_var = np.var(chroma, axis=1)
 
-        # Apply triangle filters
-        filtered_frames = []
-        for frame in fft_frames:
-            filtered_frame = []
-            for mel_filter in mel_filters:
-                frame_reshaped = np.expand_dims(frame, axis=1)
-                filtered_frame.append(np.sum(np.abs(frame_reshaped) ** 2 * mel_filter))
-            filtered_frames.extend(filtered_frame)
+        # RMS mean and variance
+        rms = librosa.feature.rms(y=wav)
+        rms_mean = np.mean(rms)
+        rms_var = np.var(rms)
 
-        return np.array(filtered_frames)
+        # Concatenate all features
+        features = np.concatenate([mfcc_features, chroma_mean, chroma_var, [rms_mean], [rms_var]])
 
+        return features

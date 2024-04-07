@@ -2,15 +2,15 @@
 from sklearn.mixture import GaussianMixture
 import joblib
 import os
-from .get_df import get_dataframe
-from .dataset import get_ds_df
+from get_df import get_dataframe
+from dataset import get_ds_df
 
 SAVE_DIR = "models/"
 
 # Function to train GMM for each speaker
 def train_gmm_for_speakers(dfs, subsampled_sid):
     for i in range(len(subsampled_sid)):
-        speaker_id = subsampled_sid[i]  # Assuming 'speaker_id' is in the DataFrame
+        speaker_id = dfs[i]['speaker_id'][0]  # Assuming 'speaker_id' is in the DataFrame
         mfcc_features = dfs[i].drop(columns=['filename'])  # Assuming 'speaker_id' is a column to drop
 
         # Train GMM
@@ -25,8 +25,8 @@ def train_gmm_for_speakers(dfs, subsampled_sid):
         print(f"GMM model saved for speaker ID {speaker_id} as {model_filename}")
 
 
-df_list = get_ds_df()
-sids = get_dataframe()
+train_dfs, test_dfs = get_ds_df()
+sub_df, sids = get_dataframe()()
 
 # Train GMM for each speaker and save the models
-train_gmm_for_speakers(df_list, sids)
+train_gmm_for_speakers(train_dfs, sids)
