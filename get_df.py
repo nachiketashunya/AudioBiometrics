@@ -1,5 +1,4 @@
 import pandas as pd
-import pandas as pd
 
 CSV_FILE = "data/svarah/meta_speaker_stats.csv"
 
